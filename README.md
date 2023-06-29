@@ -7,11 +7,17 @@
   
 # Mini practical article about the creation of a genetic algorithm
   Structure of the genetic algorithm:
+  ```
     1)Initpopulation
+    
     2)FitnessComputing
+    
     3)FitnessSorting
+    
     4)Mutation
+    
     5)Crossover
+  ```
     
   1 - At this stage, we generate the original organisms for subsequent generations.
   
