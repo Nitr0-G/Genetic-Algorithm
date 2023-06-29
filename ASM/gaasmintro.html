@@ -1,0 +1,1120 @@
+<html>
+<head>
+<title>Genetic Algorithm with Floating Point at Assembler.
+</title>
+</head>
+<body>
+<h1>Genetic Algorithm with Floating Point at Assembler.</h1>
+
+<h2>Purpose</h2>
+The purpose of this article is introduce how to make Genetic Algorithm @asm ,
+and how to make assembly program, and my Enhglish skill up.
+I don't have good ENGLISH and enough knowledge about GA and FP.
+By writing this article , I'll teach  about GA ,FP , and ENGLISH  to me .
+If you read this , soonly you notice that I like to use "don't know" .
+When I use the words, I really don't know (hmm this is first time , you see).
+If you know about it plz teach it to me ,and I want to fix it
+
+When I started writing this article , I was going to make the series of lesson.
+But during writing , this article became one article by itself .
+So something strange is appeared in place .
+If you have enough time and enough perseverance , I want you to read through the whole article at first.
+And read again , then you can understand ... I hope so .
+
+<h2>Compiler</h2>
+I use NASM.
+
+<h2>First</h2>
+
+First program we make is only quit . Nothing is done .
+But it's important how to know quit.
+following code is ga001.asm:
+
+<pre>
+<font color=darkblue>
+--- ga001.asm ---
+	org 0100h
+start:
+<font color=darkgreen>; quit program.</font>
+	ret
+--- ga001.asm ---
+</font>
+</pre>
+
+Line 1 is declaration that this program start at 0100h .<br>
+Line 2 is the label, if you want to back to start, you can use this label.<br>
+Line 3 is comment . At nasm ';' is comment start and anything after this is ignored.<br>
+Line 4 is command which is only this program have. And this statement( command ) is<br>
+quit the program (exactly it has described another expression... but now I use it for QUIT the program)<br>
+
+<h3>Compile</h3>
+
+Next How to compile it ?
+<pre>
+<font color=darkblue>
+--- cut ---
+nasm -f bin -o ga001.com ga001.asm
+--- cut ---
+</font>
+</pre>
+
+<h3>Run</h3>
+How to use it?
+
+Let's invoke
+<pre>
+<font color=darkblue>
+--- magic word ---
+ga001
+--- magic word ---
+</font>
+</pre>
+
+screen shot isn't avalable ... but something like this .
+<pre>
+<font color=darkblue>
+--- screen mimic ---
+C:\gaasm>nasm -f bin -o ga001.com ga001.asm
+
+C:\gaasm>ga001
+
+C:\gaasm>
+--- mimic is dead ---
+</font>
+</pre>
+
+umm , it works well ,but there's nothing... like JAPANESE Bank's rates of interest.
+
+<h2>Before making GENE pool</h2>
+
+We must construct the GENE pool and filled it random numbers.
+Method of random number generating is alot of type.
+It's heavy factor of GA , though I currently choose easy one which is work.
+Of course you can prepare own fantastic random routine.
+To randomize I use following interupt( DOS only ):
+
+<pre>
+<font color=darkblue>
+--- from Ralf's interupt list ---
+AH = 00h
+
+Return:
+CX:DX = number of clock ticks since midnight
+AL = midnight flag, nonzero if midnight passed since time last read
+--- from Ralf's interupt list ---
+</font>
+</pre>
+
+How to invoke .
+
+<pre>
+<font color=darkblue>
+--- randomize ---
+<font color=darkgreen>;randomize   initialize rand seed</font>
+	xor ah,ah		<font color=darkgreen>; ah = 0</font>
+	int 1Ah			<font color=darkgreen>; get date and time</font>
+--- randomize ---
+</font>
+</pre>
+
+umm , Why 'xor ah,ah' makes ah = 0 ? 'XOR' is exclusive OR .
+
+<pre>
+---XOR----
+A | B | R
+0 | 0 | 0
+0 | 1 | 1
+1 | 0 | 1
+1 | 1 | 0
+---XOR----
+</pre>
+
+As you see , if A and B is same ( A is set and B is set or , both is unset )
+Result is 0 . and if A and B isn't same , Result = 1.
+If we take ah as A , and ah as B , all bit is same . so ah = 0.
+
+Feed seed
+
+<pre>
+<font color=darkblue>
+--- feed seed ---
+<font color=darkgreen>; dx is wide range</font>
+<font color=darkgreen>; cx is small...?</font>
+<font color=darkgreen>; so we take cx as 1st seed and dx as 2nd seed</font>
+	mov [seed1],cx		<font color=darkgreen>; save seed1</font>
+	mov [seed2],dx		<font color=darkgreen>; save seed2</font>
+--- feed seed ---
+</font>
+</pre>
+
+Now Random generating routine have gotten two seeds.
+I made following routine , I don't know it work pretty well.
+But as far as I dumped , It seem to work enough well and pretty complex to explain it...
+So I don't explain it :) , plz Don't complain for my lazy ...
+
+<pre>
+<font color=darkblue>
+--- random generate ---
+<font color=darkgreen>; generate random number</font>
+<font color=darkgreen>;  return</font>
+<font color=darkgreen>;	ax = number</font>
+random:
+	db 0b8h	<font color=darkgreen>; mov ax,seed1</font>
+seed1:	db 0,0
+
+	dec ax	<font color=darkgreen>; decrement</font>
+	
+randloop:
+	db 35h	<font color=darkgreen>; xor ax,seed2</font>
+seed2:	db 0,0
+	inc ax	<font color=darkgreen>;</font>
+	xchg ah,al
+	xor [seed2],ax	<font color=darkgreen>; 0.092</font>
+	sub ax,[seed1]
+	rol al,1	<font color=darkgreen>; 0.091</font>
+	xchg ah,al	<font color=darkgreen>; 0.092</font>
+	sub [seed1],ax	<font color=darkgreen>; change seed1</font>
+	ret
+--- random generate ---
+</font>
+</pre>
+
+ver 0.091, I fix 'rol al,1' to 'ror al,1' , it works better ??
+ver 0.092, 'xchg ah,al' before 'sub [seed1],ax' . 'xor [seed2],ax' before 'sub ax,[seed1]
+
+Hi ppl , now we can generate any random number ( I hope so ...)
+Finally , we stand the START line.
+Let's make GENE POOL !!
+
+But,,, before make GENE POOL . we have something to decide .
+Because what kind of gene expression we use is important.
+And it's depend on PROBLEM which we solve.
+Umm , making problem is harder than solve it :) ,Joke .
+I make 1 problem . It's a find the minimum value of fuction which
+has some Sin/Cos functions . I want to choose easy one .
+Everyone can understand where is the minimum , and if the funciton
+have LOCAL minimum is better .
+Exactly I don't have any idea of function's shape . So it's come back later.
+But I decide the range of search space between to 0 to 1 .
+I make start line , only we need is the whistle ( NOT **'s whistler :-) 
+
+<h2>To make GENE POOL</h2>
+
+First we decide the number of population. ( hmm , there is another problem )
+I don't know how range I can use ...
+So I gather 100 population for our system.
+
+<pre>
+<font color=darkblue>
+--- something from 004 ---
+POPULATION equ 100	<font color=darkgreen>; population of pool</font>
+--- end of c&p ---
+</font>
+</pre>
+
+This line is the population . If you want change population ,
+you can take any number .( I don't know where is limit ...)
+
+We decide the number of population. We make the pool with GENEs.
+Following code is pool maker .
+
+<pre>
+<font color=darkblue>
+--- this is pool maker ---
+	mov cx,POPULATION * 4	<font color=darkgreen>; why multiply by 4 ? A gene have 4 byte (32 bit)!</font>
+	mov di,randnum
+loop1:
+	call random		<font color=darkgreen>; generate random number</font>
+	stosb			<font color=darkgreen>; we store the number which we generate to [di]</font>
+	loop loop1
+--- this is pool maker ---
+</font>
+</pre>
+
+cx is which time we loop(s).
+stosb is value of AL into address which is indicated by di.
+Now we have made the pool full of GENEs.
+
+<h2>Evaluate</h2>
+
+How do we evaluate it ?
+
+hmm I copied this from test functions
+
+<pre>
+<font color=darkblue>
+--- here's function ---
+Rosenbrock's Saddle
+
+F(x) = Sum(i=1,n) { 100*(x_(i+1)-x_i^2)^2 + (1-x_i)^2 } 
+
+-2.048 .le. x_i .le. 2.048 
+
+Minimum = 0.0 at x_i=1.0
+This function has a long curved valley which is only slightly decreasing.
+--- here's function ---
+</font>
+</pre>
+
+I decide when i = n , (i+1) = ( i + 1 ) mod i ,(ie . result 1 ).
+And n = 2.So if I write 'y' , 'y' means 'x+1' .
+So fomula is following
+
+<pre>
+<font color=darkblue>
+--- extract function ---
+F(x) = Sum(i=1,n) { 100*(x_(i+1)-x_i^2)^2 + (1-x_i)^2 } 
+     = { 100 * ( y - x ^ 2 ) ^ 2 + ( 1 - x ) ^ 2 } 
+     + { 100 * ( x - y ^ 2 ) ^ 2 + ( 1 - y ) ^ 2 }
+--- extract function ---
+</font>
+</pre>
+
+First we have x and y  between -2.408 to 2.048
+How do we implement this limitation ?
+Remeber the remainder . If we divide the number by 4 and take the remainder of this , we get the number
+which range is between 0 to 3.
+So  we have divide the number , which gene express , by 4096( 2048*2 ).
+following code is :
+
+<pre>
+<font color=darkblue>
+--- set up x ---
+<font color=darkgreen>; setup x between -2048 to 2048</font>
+	fild dword [ range ]	<font color=darkgreen>; store denominator (4096 , we need between 0 to 4096 )</font>
+	fild dword [ di ]	<font color=darkgreen>; get gene for x</font>
+	fabs			<font color=darkgreen>; absolute 'ST0'</font>
+	fprem			<font color=darkgreen>; 0 < 'ST0' < 4096</font>
+	fild dword [ rangef ]	<font color=darkgreen>; st0 = 2048 , st1 = 0 < x < 4096</font>
+	fsubp st1,st0		<font color=darkgreen>; -2048 < 'ST0' < 2048</font>
+<font color=darkgreen>; setup x between -2.048 to 2.048</font>
+	fidiv word [ para2 ]
+--- set up x ---
+</font>
+</pre>
+
+do the same , make y .
+
+<pre>
+<font color=darkblue>
+--- set up y ( x + 1 ) ---
+<font color=darkgreen>; setup y between -2048 to 2048</font>
+	fild dword [ range ]	<font color=darkgreen>; store denominator (4096 , we need between 0 to 4096 )</font>
+	fild dword [ di + 4 ]	<font color=darkgreen>; get gene for y</font>
+	fabs			<font color=darkgreen>; absolute 'ST0'</font>
+	fprem			<font color=darkgreen>; 0 < 'ST0' < 4096</font>
+	fild dword [ rangef ]	<font color=darkgreen>; st0 = 2048 , st1 = 0 < y < 4096</font>
+	fsubp st1,st0		<font color=darkgreen>; -2048 < 'ST0' < 2048</font>
+<font color=darkgreen>; setup y between -2.048 to 2.048</font>
+	fidiv word [ para2 ]
+--- set up y ---
+</font>
+</pre>
+
+Currently we have 4096 in two stacks . and we don't need them . so pop them.
+
+Oops I did it again ...
+We load integer value and divide by integer ,so we get remainder as integer value.
+So we only have 4096 diffent value...
+It's too narrow . I solve this problem with division 1000000.
+
+<pre>
+<font color=darkblue>Following code is revised
+--- division ---
+	fabs			<font color=darkgreen>; absolute 'ST0'</font>
+	fdiv dword [ million ]	<font color=darkgreen>; ver 0.094</font>
+	fprem			<font color=darkgreen>; 0 < 'ST0' < 4096</font>
+--- division ---
+</font>
+</pre>
+
+Of course , we do this both x and y .
+I notice that problem is between 'dd 1000000.0' and 'dd 1000000'.
+for example:
+<pre>
+<font color=darkblue>
+--- datas ---
+million:  dd 1000000.0
+million2: dd 1000000
+--- datas ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- code ---
+	fld dword [ million ]
+	fld dword [ million2 ]
+--- code ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- result ---
+st0=+1.401298E-0039 st1=+1.000000E+0006
+--- result ---
+</font>
+</pre>
+
+hmm, I think these aren't same value...
+If you make something floating point value , I suggest you ( of course me ) to
+pay attention to this .
+
+<pre>
+<font color=darkblue>
+--- pop ---
+<font color=darkgreen>; pop two 4096(s)</font>
+	fxch st0,st3		<font color=darkgreen>; st0 ,st1 = 4096</font>
+	fcompp			<font color=darkgreen>; pop st0,st1</font>
+--- pop ---
+</font>
+</pre>
+
+next we calculate "x_i^2"
+
+<pre>
+<font color=darkblue>
+--- calculate perm 1 ---
+<font color=darkgreen>; we have st0 = x , st1 = y</font>
+<font color=darkgreen>; load x</font>
+	fld st0
+<font color=darkgreen>; x^2</font>
+	fmul st0		<font color=darkgreen>; x^2</font>
+--- calculate perm 1 ---
+</font>
+</pre>
+
+
+<pre>
+<font color=darkblue>
+--- calculate 2 ---
+<font color=darkgreen>; load y</font>
+	fld st2
+<font color=darkgreen>; y - x_i^2</font>
+	fsubrp st1
+--- calculate 2 ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- calculate 3 ---
+<font color=darkgreen>;( y - x ^ 2 ) ^ 2</font>
+	fmul st0
+<font color=darkgreen>;100 * ( y - x ^ 2 ) ^ 2</font>
+	fimul word [ para1 ]
+--- calculate 3 ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- calculate 4 ---
+<font color=darkgreen>; 1 - x</font>
+	fld1
+	fsub st2
+<font color=darkgreen>; ( 1 - x ) ^ 2</font>
+	fmul st0
+--- calculate 4 ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- calculate 5 ---
+<font color=darkgreen>;{ 100 * ( y - x ^ 2 ) ^ 2 + ( 1 - x ) ^ 2 } </font>
+	faddp st1
+--- calculate 5 ---
+</font>
+</pre>
+
+Do the same manner , when we calculate '{ 100 * ( x - y ^ 2 ) ^ 2 + ( 1 - y ) ^ 2 }'
+
+<pre>
+<font color=darkblue>Code is following ,but I don't explain it anymore.
+--- calculate 6 ---
+<font color=darkgreen>; load y</font>
+	fld st2
+<font color=darkgreen>; y^2</font>
+	fmul st0		<font color=darkgreen>; y_i^2</font>
+<font color=darkgreen>; load x</font>
+	fld st2
+<font color=darkgreen>; x - y^2</font>
+	fsubrp st1
+<font color=darkgreen>;( y - x ^ 2 ) ^ 2</font>
+	fmul st0
+<font color=darkgreen>;100 * ( y - x ^ 2 ) ^ 2</font>
+	fimul word [ para1 ]
+<font color=darkgreen>; 1 - x</font>
+	fld1
+	fsub st3
+<font color=darkgreen>; ( 1 - x ) ^ 2</font>
+	fmul st0
+<font color=darkgreen>;{ 100 * ( y - x ^ 2 ) ^ 2 + ( 1 - x ) ^ 2 } </font>
+	faddp st1
+--- calculate 6 ---
+</font>
+</pre>
+
+
+<pre>
+<font color=darkblue>So we finish calculating perms . Finally , we add them . And store it to [si].
+--- sum up & store ---
+<font color=darkgreen>; store fitness to [si]</font>
+	fstp dword [si]
+--- sum up & store ---
+</font>
+</pre>
+
+When we have stored the fitness value. But we have 2 value in FP stack .
+So we pop them ,and return .
+
+<pre>
+<font color=darkblue>
+--- finalize ---
+	fcompp
+	ret 
+--- finalize ---
+</font>
+</pre>
+
+<h2>Selection</h2>
+
+Hey , fitness value is finished . We must select the adam and eve with fitness value.
+( hmm if they didn't eat apple , they must not select with fitness :)
+We shoot she and he with roulette .
+
+<h3>Roulette Selection Algorithm.</h3>
+
+Before start this section.I change little bit ,but it's important.
+By now , I used the size of gene with 4 , it's constant . This isn't good .
+When we change the genesize , all 4 turn to new size in source code.
+So I make it CONSTANT .
+
+<pre>
+<font color=darkblue>
+--- gene size ---
+GENESIZE equ 4
+--- gene size ---
+</font>
+</pre>
+
+If you want to change size of gene, only change this line.
+All line will be affected , WHEN you RECOMPILE it .
+( it's often occured for me, source is updated , but execute isn't updated ... )
+
+Let's get back to the feature !
+I choose the roulette selection . But there are various selection algo.
+I don't know why I choose it :) . But I choose it .
+Tactics is following
+<blockquote>
+	<ol>
+	<li>sum up the all fitness ( total )
+	<li>make random number between 0 to total.
+	<li>compare one's fitness and total
+	<li>if one's fitness is less than total , total = total - fitness and goto 3
+	<li>copy this indivisual to parent1
+	<li>do the same 3 - 5 to make parent2
+	</ol>
+</blockquote>
+
+umm But , much of debuggind time brought me some fatal bug...
+If following routine is made , great value is occupied wide range seat.
+Luckily , I found solution. To take  a reciprocal number .
+And always before calculatition , we take a reciprocal number .
+No other change is needed . 
+But this leave us big problem ,if we choose this solution forever,
+we always must change this routine.
+In future ( isn't so long ) , I'll standardize it to something.
+
+This is flow of my routine. Seeing is believing.
+
+<pre>
+<font color=darkblue>
+--- roulette selection initialize ---
+selection:
+<font color=darkgreen>; Roulette selection</font>
+<font color=darkgreen>; initialize</font>
+	fldz			<font color=darkgreen>; total</font>
+	mov di,fitness		<font color=darkgreen>; start address of fitness value</font>
+	mov cx,POPULATION	<font color=darkgreen>; number of POPULATION</font>
+--- roulette selection initialize ---
+</font>
+</pre>
+
+umm , initializing routine is quite quiet.
+'fldz' loads 0 to st(0) .
+
+<pre>
+<font color=darkblue>
+--- roulette selection 1 ---
+<font color=darkgreen>; calculation total fitness</font>
+rouletteloop1:
+	fld1			<font color=darkgreen>; 0.092</font>
+	fld dword [di]		<font color=darkgreen>; load fitness</font>
+	fdivp st1		<font color=darkgreen>; 0.092</font>
+	faddp st1		<font color=darkgreen>; sum up fitness</font>
+	add di,4		<font color=darkgreen>; to point next fitness</font>
+	loop rouletteloop1
+--- roulette selection 1 ---
+</font>
+</pre>
+
+2 line have its comment with '0.092' . This is fixed version to calculate a reciprocal.<br>
+This loop is looped by POPULATION times.And when loop is finished , st0 have total.<br>
+So I explain about 'fld1' , 'fld dword [di]' , 'fdivp st1' , and 'faddp st1'. <br>
+Before we start this , we initialized FPU STACK with 'fldz'.So st(0) = 0.0 (after 'fldz')<br>
+
+<pre>
+<font color=darkblue>
+--- stack ---
+before 'fld1'           - st(0) = 0
+'fld1'                  - st(0) = 1 , st(1) = 0
+'fld dword [di]'        - st(0) = gene(0)'s fitness value , st(1) = 1 ,st(2) = 0
+'fdivp st1'             - st(0) = a reciprocal of gene(0)'s fitness   ,st(1) = 0
+'faddp st1'             - st(0) = a reciprocal of gene(0)'s fitness
+--- stack ---
+</font>
+</pre>
+
+st(0) 's value ( this time was 0 ) push to st(1) , and st(0) have gene(0)'s fitness value , indicated by [di] .<br>
+<p>
+Next 'faddp st1' is done .<br>
+st(1) = st(1) + st(0) , and pop st(0) , so st(1) have nothing , st(0) have fitness value.<br>
+<p>
+Then di = di + 4 , so [di] indicates next genes fitness value.And loop .<br>
+When loop ends , st(0) have total fitness .<br>
+
+Next we make random number between 0 to total.
+
+<pre>
+<font color=darkblue>
+--- roulette selecion 2 ---
+<font color=darkgreen>; roulette start</font>
+	call random		<font color=darkgreen>; generate random</font>
+	mov [ randtmp ] , ax	<font color=darkgreen>; save random to temp</font>
+	fild dword [ randtmp ]	<font color=darkgreen>; load random number from temp</font>
+	fild dword [ randmax ]	<font color=darkgreen>; load maximum number of random</font>
+	fdivp st1		<font color=darkgreen>; st1 / st0 ( random / maximum ), this make 0 < random < 1</font>
+	fmul st1		<font color=darkgreen>; 0 < target < total fitness</font>
+--- roulette selecion 2 ---
+</font>
+</pre>
+
+this formula is all : target = ( random number / maximum random number ) * total<br>
+By doing this ,we know where is target .So we can choose adam.<br>
+
+<pre>
+<font color=darkblue>
+--- FPU STACK is something like ... ---
+call random		- st(0) = total fitness
+mov [ randtmp ] , ax	- st(0) = total fitness
+fild dword [ randtmp ]	- st(0) = random number , st(1) = total fitness
+fild dword [ randmax ]	- st(0) = RANDOM MAX    , st(1) = random number , st(2) = total fitness
+fdivp st1		- st(0) = 0 < random < 1, st(1) = total fitness
+fmul st1		- st(0) = 0 < random < total fitness , st(1) = total fitness
+--- FPU STACK is something like ... ---
+</font>
+</pre>
+
+Next we have some initialization.
+
+<pre>
+<font color=darkblue>
+--- roulette selection before3 ---
+<font color=darkgreen>; seek lucky adam</font>
+	mov cx,POPULATION	<font color=darkgreen>; number of POPULATION</font>
+	mov si,randnum - GENESIZE	<font color=darkgreen>; start address of gene pool - GENESIZE ( 1 previous )</font>
+	mov di,fitness - 4		<font color=darkgreen>; start address of fitness value - 4 ( 1 previous )</font>
+--- roulette selection before3 ---
+</font>
+</pre>
+
+Why [ - GENESIZE ] ? Why [ - 4 ] ? We compare the chanpion ( current minimum ) and target ( canditate ) .
+At first Following code will do , add GENESIZE or 4 . To do this , next indivisual is target canditate.
+So if we set " randnum " only , the first indivisual isn't investigated .
+
+<pre>
+<font color=darkblue>
+--- roulette selection 3 - 4 ---
+rouletteloop2:
+	add si, GENESIZE	<font color=darkgreen>; next gene</font>
+	add di,4		<font color=darkgreen>; next fitness</font>
+	fld1			<font color=darkgreen>; 0.092</font>
+	fld dword [di]		<font color=darkgreen>; load fitness</font>
+	fdivp st1		<font color=darkgreen>; 0.092</font>
+	fcom st1		<font color=darkgreen>; </font>
+	fnstsw ax		<font color=darkgreen>; during st0 < st1 ,ah = ???????1 . if st0 > st1 ah = ???????0</font>
+	and ah,1		<font color=darkgreen>; check condition</font>
+	fsubp st1,st0		<font color=darkgreen>; substract st1 - st0 and result store in st1 but 1 pop occur st0 have finally result </font>
+	loopnz rouletteloop2	<font color=darkgreen>; cx = cx - 1 . if cx isn't 0 but zeroflag is clear ,exit loop</font>
+--- roulette selection 3 - 4 ---
+</font>
+</pre>
+
+Firstly, increment canditate. and calculate a reciprocal of its fitness( fld1 ... fdivp ).<br>
+And compare with total (fcom st1 ).<br>
+Next line 'fnstsw ax' is tricky . This is load FPU STATUS into 'AX' .<br>
+As comment say , we only need 1 flag ( of FPU STATUS ) , which is at  bit 0 of ah.<br>
+After loading FPU STATUS into AX , we check  bit 0 of ah .<br>
+With "and ah,1"<br>
+If bit 0 of ah is clear(0) , zero flag is clear .<br>
+If bit 0 of ah is   set(1) , zero flag is set.<br>
+Next (fsubp ...) is total = total - fitness . By doing this ,total down to 0 .<br>
+And if total is enough small , someone's fitness is grater than total.He is ADAM :)<br>
+<p>
+We met adam , so we want him to meet eve under the apple tree .
+So we pick up him from pool ( he can't swim well )
+
+<pre>
+<font color=darkblue>
+--- roulette selection 5 ---
+<font color=darkgreen>; now [ si ] is adam's gene</font>
+	mov di, parent1		<font color=darkgreen>; here's seat for him</font>
+	mov cx, GENESIZE	<font color=darkgreen>; to copy gene , cx have genesize (byte)</font>
+	rep movsb		<font color=darkgreen>; do copy</font>
+	fcomp	st1		<font color=darkgreen>; adios adam</font>
+--- roulette selection 5 ---
+</font>
+</pre>
+
+We copy GENESIZE ( bytes) . 
+'rep movsb' do:
+[ di ] = [ si ].  di = di + 1 , si = si + 1.
+(exactlly di and si is affected flag...but now I don't explain it ) 
+
+This is a half of way .But another half is same.
+Only diffrence is before 'ret' isn't 'fcomp st1' .
+The line before 'ret' is 'fcompp' ( 2 stack is poped )
+
+Making offspring 
+
+The main stream is 
+	1. select parents
+	2. crossover choosen parents
+	3. go to 1 until next generation is full.
+I don't want cx and di to destroy . So I use push and pop to save them.
+
+The code will explain by itself :)
+
+<pre>
+<font color=darkblue>
+--- maker ---
+<font color=darkgreen>; making offspring loop</font>
+<font color=darkgreen>; init</font>
+	mov cx, POPULATION	<font color=darkgreen>; loop counter for  next generation</font>
+	mov di, offspring	<font color=darkgreen>; next swimmers warming up room</font>
+makeoffspring:
+	push cx
+	push di
+	call selection		<font color=darkgreen>; selecti parents by ROULETTe alGo</font>
+	pop di
+	call crossover		<font color=darkgreen>; corssover by uniform crossover</font>
+	add di, GENESIZE	<font color=darkgreen>; next position</font>
+	pop cx
+	loop makeoffspring
+--- maker ---
+</font>
+</pre>
+
+Where is 'crossover' ? , Next !
+
+Crossover
+
+We have choosen both parents ( sometimes parent... )
+
+<pre>
+<font color=darkblue>
+--- crossover ---
+<font color=darkgreen>; uniform crossover</font>
+<font color=darkgreen>;   parent1, parent2 is gene</font>
+<font color=darkgreen>;   di = offsprring ( destination address )</font>
+<font color=darkgreen>; broken:</font>
+<font color=darkgreen>;	ax,bx,cx,dx</font>
+--- crossover ---
+</font>
+</pre>
+
+umm, These are comments .
+
+<pre>
+<font color=darkblue>
+--- crossover 1 ---
+crossover:
+        xor bx,bx			<font color=darkgreen>; indicator ( counter ) reset</font>
+--- crossover 1 ---
+</font>
+</pre>
+
+bx is used for indicator which we are treating and also store the offspring.
+
+<pre>
+<font color=darkblue>
+--- crossover 1.5 ---
+crossover0:
+	mov cx,8			<font color=darkgreen>;1 byte is 8 bit.</font>
+--- crossover 1.5 ---
+</font>
+</pre>
+
+Why cx is 8 ? caz 1 byte is 8 bits. So we can loop whole a byte.
+
+<pre>
+<font color=darkblue>
+--- crossover 2 ---
+crossover1:
+        call random			<font color=darkgreen>; generate random number</font>
+        shr al,1			<font color=darkgreen>; check even or odd</font>
+        jc crossover2			<font color=darkgreen>; if odd (ie carry flag is set ) , take parent2</font>
+        mov al , [ parent1 + bx ]	<font color=darkgreen>; because even , take parent1</font>
+        jmp crossover3			<font color=darkgreen>; go to set</font>
+crossover2:
+        mov al , [ parent2 + bx ]	<font color=darkgreen>; take parent2</font>
+crossover3:
+--- crossover 2 ---
+</font>
+</pre>
+
+First call random , and check the number is odd or even.
+The probability is half and half . If odd we take parent2 , so jump.
+If even , we take parent1 .And pass through parent2 routine.
+
+<pre>
+<font color=darkblue>
+--- crossover 3 ---
+	shl al,cl			<font color=darkgreen>; shift al left by cl times</font>
+	rcr dl,1			<font color=darkgreen>; rotate dl including carry flag by 1</font>
+--- crossover 3 ---
+</font>
+</pre>
+
+This is something tricky for non-assembler experience users.
+First shift al ( which have parent we choose ) left cl times .
+So al's ( 8 - cx ) bit go to carry flag.
+Second rotate dl 1 times to right, according to this dl's 7 bit is same carry flag.
+
+<pre>
+<font color=darkblue>
+--- crossover 4 ---
+	loop crossover1			<font color=darkgreen>; cx = cx -1</font>
+--- crossover 4 ---
+</font>
+</pre>
+
+these pattern is repeated 8 times ( 1 byte is 8 bit )
+
+<pre>
+<font color=darkblue>
+--- crossover 5 ---
+	mov [di + bx],dl		<font color=darkgreen>; save it as gene</font>
+        inc bx
+        cmp bx , GENESIZE
+        jnz crossover0
+--- crossover 5 ---
+</font>
+</pre>
+
+After looping , we have made 1 byte . So we store it as offspring's gene.
+And counter is increased . If counter( this case 'bx' ) isn't GENESIZE, loop back to crossover0.
+
+<pre>
+<font color=darkblue>
+--- crossover 6 ---
+	ret
+--- crossover 6 ---
+</font>
+</pre>
+
+bye bye crossover routine ...
+
+Mutation
+
+Firstly we decide how often mutation occurs . I take 0.001 for this.
+I think it's good that rate is between 0 to 1 ( 0 =< rate =< 1 )
+
+<pre>
+<font color=darkblue>
+--- mutationrate ---
+mutationrate:	dd 0.001	<font color=darkgreen>; mutation rate</font>
+--- mutationrate ---
+</font>
+</pre>
+
+Secondly , we initialize for mutation routine.
+Almost of initialization routine is as same as crossover.
+
+<pre>
+<font color=darkblue>
+--- mutation initialize ---
+<font color=darkgreen>; mutation</font>
+<font color=darkgreen>; di = offspring start address</font>
+mutation:
+        xor bx,bx
+mutation0:
+        mov cx,8                <font color=darkgreen>;1 byte is 8 bit.</font>
+--- mutation initialize ---
+</font>
+</pre>
+
+Next, we want rancom number between 0 to 1 .
+Remember we made this routine before.So copy and paste.
+And modify it for this routine.
+And to compare , we must load mutationrate .
+
+<pre>
+<font color=darkblue>
+--- mutation 1 ---
+	call random		<font color=darkgreen>; generate random</font>
+	mov [ randtmp ] , ax	<font color=darkgreen>; save temp</font>
+	fld dword[ mutationrate ]	<font color=darkgreen>; load mutationrate</font>
+	fild dword [ randtmp ]	<font color=darkgreen>; load random number from temp</font>
+	fild dword [ randmax ]	<font color=darkgreen>; load maximum number of random</font>
+	fdivp st1		<font color=darkgreen>; st1 / st0 , this make 0 < random < 1</font>
+--- mutation 1 ---
+</font>
+</pre>
+
+Next we compare mutationrate and random number.
+If mutationrate > random number then mutation occur.
+If mutationrate < random number then mutation does not occur.
+well if mutationrate = random number ? , hehe homework :)
+
+<pre>
+<font color=darkblue>
+--- stack ---
+fld dword[ mutationrate ]	- st(0) = mutation rate
+fild dword [ randtmp ]		- st(0) = random number , st(1) = mutation rate
+fild dword [ randmax ]		- st(0) = RAND_MAX , st(1) = random number st(2) = mutation rate
+fdivp st1			- st(0) = random number / RNAD_MAX , st(1) = mutaion rate
+--- stack ---
+</font>
+</pre>
+
+<pre>
+<font color=darkblue>
+--- mutation 2 ---
+	fcompp			<font color=darkgreen>; compare and pop st0 ,st1</font>
+	fnstsw ax		<font color=darkgreen>; during st0 < st1 ,ah = ???????1 . if st0 > st1 ah = ???????0</font>
+	shr ah,1		<font color=darkgreen>; bit 0 of ah -> carry flag</font>
+	rcr dl,1		<font color=darkgreen>; save carry flag</font>
+        loop mutation1		<font color=darkgreen>; do this 1 byte( ie 8 times )</font>
+--- mutation 2 ---
+</font>
+</pre>
+
+Flag condtion is at ah's bit 0. So we did 'shr ah,1' , carry flag have condition.
+And 'rcr dl' , 'dl' have condtion .
+If there is mutaion , 'dl' have '1' on that bit.
+
+<pre>
+<font color=darkblue>
+--- mutation 3 ---
+        xor [ di + bx ] , dl	<font color=darkgreen>; Do MUTATION</font>
+--- mutation 3 ---
+</font>
+</pre>
+
+So we know where is mutation when we investigate with 'dl'.
+'xor' make the mutation .
+
+<pre>
+<font color=darkblue>
+--- mutation 4 ---
+        inc bx			<font color=darkgreen>; next position</font>
+        cmp bx,GENESIZE		<font color=darkgreen>; it's end?</font>
+        jnz mutation0		<font color=darkgreen>; if it's not end , we go back to 'mutation0'.</font>
+--- mutation 4 ---
+</font>
+</pre>
+
+Do these routines until whole gene.
+
+MainLoop
+
+Finally , we make all element of GA .So We make main loop .
+The main loop is most important factor which is when GA is end .
+But this time , I decide to loop 10000 times , if the best optimal solution is found.
+Of course , you can implement the main loop is end when the best solution is found.
+
+<pre>
+<font color=darkblue>
+--- mainloop 1 ---
+<font color=darkgreen>; mainloop start</font>
+        mov cx, 10000   <font color=darkgreen>; main loop counter</font>
+mainloop:
+        push cx         <font color=darkgreen>; save main loop counter </font>
+--- mainloop 1 ---
+</font>
+</pre>
+
+Why 'push cx' ? , caz 'cx' might be destroy during loop.So we save it.
+
+<pre>
+<font color=darkblue>
+--- mainloop 2 ---
+<font color=darkgreen>; calculate all fitness</font>
+        mov cx, POPULATION
+        mov di , randnum
+        mov si , fitness
+loop2:
+        call evaluate
+        add di, GENESIZE        <font color=darkgreen>; ver 0.06</font>
+        add si,4
+        loop loop2
+--- mainloop 2 ---
+</font>
+</pre>
+
+Each gene's fitness is calculated and stored.
+
+<pre>
+<font color=darkblue>
+--- mainloop 3 ---
+<font color=darkgreen>; making offspring loop</font>
+<font color=darkgreen>; init</font>
+        mov cx, POPULATION      <font color=darkgreen>; loop counter for  next generation</font>
+        mov di, offspring       <font color=darkgreen>; next swimmer warming up room</font>
+makeoffspring:
+        push cx
+        push di
+        call selection          <font color=darkgreen>; selection by ROULETTe alGo</font>
+        pop di
+        call crossover          <font color=darkgreen>; corssover by uniform crossover</font>
+        call mutation           <font color=darkgreen>; mutation</font>
+        add di, GENESIZE        <font color=darkgreen>; next offspring's position</font>
+        pop cx
+        loop makeoffspring
+--- mainloop 3 ---
+</font>
+</pre>
+
+Make next generation.
+
+<pre>
+<font color=darkblue>
+--- mainloop 4 ---
+<font color=darkgreen>; judgement gene reach to goal ?</font>
+        pop cx			<font color=darkgreen>; load loop counter</font>
+        push cx			<font color=darkgreen>; save again</font>
+        cmp cx,1		<font color=darkgreen>; if the loop is end this time</font>
+        jnz changepool  	<font color=darkgreen>; if the loop is continued , go to next.</font>
+        call judgement		<font color=darkgreen>; search best fitness</font>
+--- mainloop 4 ---
+</font>
+</pre>
+
+Once we load counter and check it if this time is end .
+Umm , this is dirty way... But now , I remain it.
+If loop is continued , we go to next .
+If loop is end this time , we search best fitness.
+
+<pre>
+<font color=darkblue>
+--- mainloop 5 ---
+<font color=darkgreen>; change gene to new.</font>
+changepool:
+        mov di, randnum			<font color=darkgreen>; old gene pool</font>
+        mov si, offspring		<font color=darkgreen>; new gene are here.</font>
+        mov cx, POPULATION * GENESIZE	<font color=darkgreen>; size of pool</font>
+        rep movsb			<font color=darkgreen>; Do change</font>
+--- mainloop 5 ---
+</font>
+</pre>
+
+We have made new gene pool , and change old pool with new one.
+
+<pre>
+<font color=darkblue>
+--- mainloop 6 ---
+        pop cx			<font color=darkgreen>; counter is back</font>
+        loop mainlooop		<font color=darkgreen>; loop</font>
+--- mainloop 6 ---
+</font>
+</pre>
+
+This is the entire mainloop routine.
+But where is 'judgement' routine ? Follow me !
+
+Judgement
+
+These code is used for judgement.
+Usually , judgement routine check whether any solution satisfies end condition .
+But this doesn't check it. Only search minimum solution .
+
+<pre>
+<font color=darkblue>
+--- judgement initialize ---
+<font color=darkgreen>; judgement</font>
+<font color=darkgreen>;  this version is to search minimum value of fitness.</font>
+<font color=darkgreen>;  return </font>
+<font color=darkgreen>;       si = best gene address</font>
+<font color=darkgreen>;       dx = best fitness value address</font>
+judgement:
+        mov bx, randnum			<font color=darkgreen>; bx = start address of gene</font>
+        mov si,bx			<font color=darkgreen>; si = bx</font>
+        mov di , fitness		<font color=darkgreen>; dx = start address of fitness value</font>
+        mov dx,di			<font color=darkgreen>; di = dx</font>
+        mov cx , POPULATION - 1		<font color=darkgreen>; cx is loop counter</font>
+        fld dword [ di ]		<font color=darkgreen>; first fitness is loaded</font>
+--- judgement initialize ---
+</font>
+</pre>
+
+Above section is initialized routine.
+
+<pre>
+<font color=darkblue>
+--- judgement 1 ---
+judgement1:
+        add bx, GENESIZE                <font color=darkgreen>; next gene</font>
+        add di, 4                       <font color=darkgreen>; next fitness</font>
+        fld dword [ di ]                <font color=darkgreen>; load fitness value</font>
+        fcom st1                        <font color=darkgreen>; compare st0( current ) and st1 ( minimum )</font>
+        fnstsw ax			<font color=darkgreen>; st0 < st1 ,ah = ???????1 . st0 > st1 ah = ???????0</font>
+        shr ah,1			<font color=darkgreen>; check ah</font>
+        jnc judgement2
+        mov dx,di                       <font color=darkgreen>; save address of fitness value</font>
+        mov si,bx                       <font color=darkgreen>; save address of gene</font>
+        fxch st0,st1			<font color=darkgreen>; exchange minimum value</font>
+judgement2:
+        fcomp st1			<font color=darkgreen>; poped</font>
+        loop judgement1
+        fcomp st1			<font color=darkgreen>; poped</font>
+        ret
+--- judgement 1 ---
+
+</font>
+</pre>
+<p>
+Tactics is following
+<blockquote>
+	<ol>
+	<li>we have the front gene's fitness value and gene address .
+	<li>compare it to next gene's fitness and if next is smaller( higher ) than it<br>
+	   we have smaller (higher) one's fitness and gene address.
+	<li>go to 1.
+	</ol>
+</blockquote>
+This is all.
+
+<h2>Conclusion?</h2>
+
+For the present, we could make GA system.But there are many of possibility . 
+Something , single point mutation , elitism , island model etc...
+If you have something interesting , I'm glad.
+
+<h1>Future Plan</h1>
+<i> ( Now there is alot of hope for optimization)</i>
+<blockquote>
+	<ul>
+	<li>Make Smaller if only 1 byte and Speed up if can .
+	<li>Some problem in this article revealed will be fixed.
+	<li>I want this code run under pmode or something like that... to have wide range memory
+	<li>And I want to have SCRIPT LANGUAGE .
+	<li>Export to another platform . 
+	</ul>
+</blockquote>
+Let's enjoy coding!
+</body>
+</html>
