@@ -1,0 +1,1 @@
+I advise you to start with this book(Introduction to genetic algorithms.pdf) and after reading this book, I suggest you start reading others already, as you will have a strong base for studying this topic at a deeper level
