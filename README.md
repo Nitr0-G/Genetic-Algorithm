@@ -5,7 +5,7 @@
   mkdir bld
   cmake ..
   
-# Description
+# Mini practical article about the creation of a genetic algorithm
   Structure of the genetic algorithm:
     1)Initpopulation
     2)FitnessComputing
